@@ -1,0 +1,3 @@
+[submodule "python-midi-websocket-server"]
+	path = python-midi-websocket-server
+	url = git@github.com:xy124/python-midi-websocket-server.git

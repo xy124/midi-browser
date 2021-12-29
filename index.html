@@ -1,0 +1,108 @@
+<html>
+  <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+  <meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+<script>
+  $( function() {
+    // Consts. To be changed by the user
+    var NUM_SLIDERS = 6;
+    var INIT_VALUE = 50; // Init value of each slider between 0 and 127
+    var MIDI_DEVICE_NAME = "Midi Through:Midi Through Port-0 14:0";
+
+    var may_send = false;
+
+    var exampleSocket = new WebSocket("ws://"+window.location.hostname+":8765/");
+    exampleSocket.onmessage = function (event) {
+      var d = JSON.parse(event.data)['content'];
+      if ((d['device_name'] === MIDI_DEVICE_NAME) &&
+        (d['status'] === 'control_change') &&
+        (d['note_number'] < NUM_SLIDERS)) {
+
+        $('#sli'+d['note_number']).val(""+d['velocity']);
+      }
+    }
+    exampleSocket.onopen = function(event) {
+      console.log('Websocket connected!');
+      may_send = true;
+      snd_all();
+    };
+
+    function send(what) {
+      if (may_send) {
+        return exampleSocket.send(JSON.stringify(what));
+      }
+    }
+
+    function change_slider(nn, v) {
+      send({
+        'device_name': MIDI_DEVICE_NAME,
+        'status':      'control_change',
+        'note_number': parseInt(nn),
+        'velocity': parseInt(v)
+      });
+    }
+
+    function slide(e) {
+      var v = $(e.target).val();
+      var nn = e.target.id.substr(3);
+      change_slider(nn, v);
+    };
+
+
+    for (var i=0; i < NUM_SLIDERS; i++) {
+      var sli='<input id="sli'+i+'" type="range" min="0" max="127" value="'+INIT_VALUE+'" orient="vertical">';
+      var els = '<td><div>'+sli+'</div></td>';
+      $( "#slider" ).append(els);
+      $('#sli'+i).on('input', slide);
+      $('#sli'+i).on('change', slide);
+    }
+
+
+    function snd_all() {
+      for (var i=0; i < NUM_SLIDERS; i++) {
+        var v = $('#sli'+i).val();
+        change_slider(i, v);
+      }
+    }
+
+    $('#btn-snd-all').on('click', snd_all);
+
+    console.log("Sliders were setup!");
+  } );
+  </script>
+  <style>
+    body, html {height:100%;}
+    body {
+      background-color: darkgreen;
+    }
+    table {
+      height: 80%;
+    }
+    .ui-slider-vertical {
+      height: 100%;
+    }
+    div {
+      height: 100%;
+    }
+    td {
+      padding: 40px;
+    }
+    input[type=range][orient=vertical]
+    {
+        writing-mode: bt-lr; /* IE */
+        -webkit-appearance: slider-vertical; /* WebKit */
+        width: 10px;
+        height: 100%;
+        padding: 0 5px;
+    }
+  </style>
+</head>
+<body>
+  <center>
+    <table>
+      <tr id="slider"></tr>
+    </table>
+    <button id="btn-snd-all">Send all</button>
+  </center>
+</body>
+</html>
